@@ -21,12 +21,9 @@ class BottomNav extends StatelessWidget {
             Navigator.pushReplacementNamed(context, '/stock');
             break;
           case 2:
-            Navigator.pushReplacementNamed(context, '/delivery');
-            break;
-          case 3:
             Navigator.pushReplacementNamed(context, '/record');
             break;
-          case 4:
+          case 3:
             Navigator.pushReplacementNamed(context, '/profile');
             break;
         }
@@ -34,7 +31,6 @@ class BottomNav extends StatelessWidget {
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
         BottomNavigationBarItem(icon: Icon(Icons.inventory), label: 'Stock'),
-        BottomNavigationBarItem(icon: Icon(Icons.local_shipping), label: 'Delivery'),
         BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Record'),
         BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
       ],

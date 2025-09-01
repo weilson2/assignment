@@ -36,7 +36,7 @@ class RecordScreen extends StatelessWidget {
           );
         },
       ),
-      bottomNavigationBar: const BottomNav(currentIndex: 3),
+      bottomNavigationBar: const BottomNav(currentIndex: 2),
     );
   }
 }

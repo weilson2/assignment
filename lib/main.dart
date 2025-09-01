@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/stock_screen.dart';
-import 'screens/delivery_screen.dart';
 import 'screens/delivery_details_screen.dart';
 import 'screens/record_screen.dart';
 import 'screens/profile_screen.dart';
@@ -51,7 +50,6 @@ class GreenstemApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
         '/stock': (context) => const StockScreen(),
-        '/delivery': (context) => const DeliveryScreen(),
         '/delivery-details': (context) => const DeliveryDetailsScreen(),
         '/record': (context) => const RecordScreen(),
         '/profile': (context) => const ProfileScreen(),
