@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'config/supabase_config.dart';
+import 'services/auth_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/stock_screen.dart';
@@ -6,7 +8,12 @@ import 'screens/delivery_details_screen.dart';
 import 'screens/record_screen.dart';
 import 'screens/profile_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Supabase
+  await SupabaseConfig.initialize();
+
   runApp(const GreenstemApp());
 }
 
@@ -45,7 +52,7 @@ class GreenstemApp extends StatelessWidget {
           labelStyle: const TextStyle(color: Colors.black87),
         ),
       ),
-      initialRoute: '/login',
+      home: const AuthWrapper(),
       routes: {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
@@ -53,6 +60,27 @@ class GreenstemApp extends StatelessWidget {
         '/delivery-details': (context) => const DeliveryDetailsScreen(),
         '/record': (context) => const RecordScreen(),
         '/profile': (context) => const ProfileScreen(),
+      },
+    );
+  }
+}
+
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final AuthService authService = AuthService();
+
+    return StreamBuilder(
+      stream: authService.authStateStream,
+      builder: (context, snapshot) {
+        // Check if user is logged in
+        if (authService.isLoggedIn) {
+          return const HomeScreen();
+        } else {
+          return const LoginScreen();
+        }
       },
     );
   }
