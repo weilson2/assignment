@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/user_model.dart';
@@ -61,7 +62,8 @@ class AuthService {
             'created_at': DateTime.now().toIso8601String(),
           });
         } catch (profileError) {
-          print('Profile creation error: $profileError');
+          // Profile creation failed, but auth user exists - that's still okay
+          debugPrint('Profile creation error: $profileError');
         }
       }
 
@@ -99,7 +101,6 @@ class AuthService {
     } on AuthException catch (error) {
       String message = error.message;
 
-
       if (message.toLowerCase().contains('invalid')) {
         throw Exception('Invalid email or password. Please check your credentials.');
       } else if (message.toLowerCase().contains('not confirmed')) {
@@ -121,18 +122,6 @@ class AuthService {
     }
   }
 
-  // Reset password
-  Future<void> resetPassword(String email) async {
-    try {
-      String processedEmail = _ensureFakeEmailWorks(email);
-      await _supabase.auth.resetPasswordForEmail(processedEmail);
-    } on AuthException catch (error) {
-      throw Exception('Password reset failed: ${error.message}');
-    } catch (error) {
-      throw Exception('Password reset failed: $error');
-    }
-  }
-
   // Get user profile
   Future<UserModel?> getUserProfile() async {
     try {
@@ -151,9 +140,9 @@ class AuthService {
         // If profiles table fails, create from auth metadata
         return UserModel(
           id: currentUser!.id,
-          fullName: currentUser!.userMetadata?['full_name'] ?? 'User',
-          email: currentUser!.userMetadata?['original_email'] ?? currentUser!.email ?? 'user@example.com',
-          phoneNumber: currentUser!.userMetadata?['phone_number'] ?? '012-3456789',
+          fullName: currentUser!.userMetadata?['full_name']?.toString() ?? 'User',
+          email: currentUser!.userMetadata?['original_email']?.toString() ?? currentUser!.email ?? 'user@example.com',
+          phoneNumber: currentUser!.userMetadata?['phone_number']?.toString() ?? '012-3456789',
           createdAt: DateTime.parse(currentUser!.createdAt),
         );
       }
