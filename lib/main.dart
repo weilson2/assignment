@@ -5,6 +5,7 @@ import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/stock_screen.dart';
 import 'screens/delivery_details_screen.dart';
+import 'screens/product_detail_screen.dart';
 import 'screens/record_screen.dart';
 import 'screens/profile_screen.dart';
 
@@ -58,6 +59,7 @@ class GreenstemApp extends StatelessWidget {
         '/home': (context) => const HomeScreen(),
         '/stock': (context) => const StockScreen(),
         '/delivery-details': (context) => const DeliveryDetailsScreen(),
+        '/product-detail': (context) => const ProductDetailScreen(),
         '/record': (context) => const RecordScreen(),
         '/profile': (context) => const ProfileScreen(),
       },
