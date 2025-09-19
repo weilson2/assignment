@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../widgets/bottom_nav.dart';
 import '../services/stock_service.dart';
 import '../models/product_model.dart';
-import '../screens/product_detail.dart';
+import '../screens/product_detail_screen.dart';
 
 class StockScreen extends StatefulWidget {
   const StockScreen({super.key});

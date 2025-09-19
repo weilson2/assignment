@@ -44,14 +44,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _handlePickUp(DeliveryJob job) async {
     try {
-      // Navigate to delivery details screen
       final result = await Navigator.pushNamed(
         context,
         '/delivery-details',
         arguments: job,
       );
 
-      // Refresh if job was updated
       if (result == true) {
         _loadTodayJobs();
       }
@@ -65,8 +63,184 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Widget _buildJobCard(DeliveryJob job) {
-    // Determine status color and text
+  String _formatTimeSlot(String startTime, String endTime) {
+    try {
+      final start = _convertTo12Hour(startTime);
+      final end = _convertTo12Hour(endTime);
+      return '$start - $end';
+    } catch (e) {
+      return '$startTime - $endTime';
+    }
+  }
+
+  String _convertTo12Hour(String time24) {
+    final parts = time24.split(':');
+    int hour = int.parse(parts[0]);
+    final minute = parts[1].padLeft(2, '0');
+
+    if (hour == 0) {
+      return '12:$minute am';
+    } else if (hour < 12) {
+      return '$hour:$minute am';
+    } else if (hour == 12) {
+      return '12:$minute pm';
+    } else {
+      return '${hour - 12}:$minute pm';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Scaffold(
+        backgroundColor: Colors.grey[200],
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Custom AppBar
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              decoration: const BoxDecoration(
+                color: Color(0xFF2E7D32),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(40),
+                  bottomRight: Radius.circular(40),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/images/greenstem_logo.webp',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.local_shipping,
+                            color: Color(0xFF2E7D32),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Greenstem Parts Delivery',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Page content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Today's Tasks",
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          '${todayJobs.length} jobs',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Jobs list
+                    Expanded(
+                      child: isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : todayJobs.isEmpty
+                          ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.local_shipping_outlined,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'No deliveries scheduled for today',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: _loadTodayJobs,
+                              child: const Text('Refresh'),
+                            ),
+                          ],
+                        ),
+                      )
+                          : RefreshIndicator(
+                        onRefresh: _loadTodayJobs,
+                        child: ListView.builder(
+                          itemCount: todayJobs.length,
+                          itemBuilder: (context, index) {
+                            return JobCard(
+                              job: todayJobs[index],
+                              formatTimeSlot: _formatTimeSlot,
+                              onPickUp: _handlePickUp,
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        bottomNavigationBar: const BottomNav(currentIndex: 0),
+      ),
+    );
+  }
+}
+
+/// Extracted widget for cleaner code and performance
+class JobCard extends StatelessWidget {
+  final DeliveryJob job;
+  final String Function(String, String) formatTimeSlot;
+  final void Function(DeliveryJob) onPickUp;
+
+  const JobCard({
+    super.key,
+    required this.job,
+    required this.formatTimeSlot,
+    required this.onPickUp,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     Color statusColor = Colors.grey;
     String statusText = job.status.toUpperCase();
 
@@ -127,7 +301,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    _formatTimeSlot(job.scheduledStartTime, job.scheduledEndTime),
+                    formatTimeSlot(job.scheduledStartTime, job.scheduledEndTime),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -170,9 +344,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 ),
-                onPressed: () => _handlePickUp(job),
+                onPressed:
+                job.status == 'delivered' ? null : () => onPickUp(job),
                 child: Text(
                   job.status == 'delivered' ? 'View Details' : 'Pick up',
                 ),
@@ -181,166 +357,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  String _formatTimeSlot(String startTime, String endTime) {
-    // Convert 24-hour format to 12-hour format
-    try {
-      final start = _convertTo12Hour(startTime);
-      final end = _convertTo12Hour(endTime);
-      return '$start - $end';
-    } catch (e) {
-      return '$startTime - $endTime';
-    }
-  }
-
-  String _convertTo12Hour(String time24) {
-    final parts = time24.split(':');
-    int hour = int.parse(parts[0]);
-    final minute = parts[1];
-
-    if (hour == 0) {
-      return '12:${minute}am';
-    } else if (hour < 12) {
-      return '${hour}:${minute}am';
-    } else if (hour == 12) {
-      return '12:${minute}pm';
-    } else {
-      return '${hour - 12}:${minute}pm';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[200],
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Custom AppBar
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-            decoration: const BoxDecoration(
-              color: Color(0xFF2E7D32),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(40),
-                topRight: Radius.circular(40),
-                bottomLeft: Radius.circular(40),
-                bottomRight: Radius.circular(40),
-              ),
-            ),
-            child: SafeArea(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        'assets/images/greenstem_logo.webp',
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(
-                            Icons.local_shipping,
-                            color: Color(0xFF2E7D32),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Greenstem Parts Delivery',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Page content
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "Today's Tasks",
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        '${todayJobs.length} jobs',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Jobs list
-                  Expanded(
-                    child: isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : todayJobs.isEmpty
-                        ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.local_shipping_outlined,
-                            size: 64,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'No deliveries scheduled for today',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          TextButton(
-                            onPressed: _loadTodayJobs,
-                            child: const Text('Refresh'),
-                          ),
-                        ],
-                      ),
-                    )
-                        : RefreshIndicator(
-                      onRefresh: _loadTodayJobs,
-                      child: ListView.builder(
-                        itemCount: todayJobs.length,
-                        itemBuilder: (context, index) {
-                          return _buildJobCard(todayJobs[index]);
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: const BottomNav(currentIndex: 0),
     );
   }
 }
