@@ -8,6 +8,7 @@ class DeliveryService {
   /// Get today's delivery jobs
   Future<List<DeliveryJob>> getTodayJobs() async {
     try {
+      final userId = _supabase.auth.currentUser?.id;
       final today = DateTime.now().toIso8601String().split('T')[0];
 
       final response = await _supabase
@@ -26,6 +27,7 @@ class DeliveryService {
             )
           ''')
           .eq('scheduled_date', today)
+          .or('status.eq.pending,assigned_personnel_id.eq.$userId')
           .order('scheduled_start_time', ascending: true);
 
       return (response as List)

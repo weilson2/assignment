@@ -301,10 +301,10 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     if (job == null) return const SizedBox.shrink();
 
     switch (job!.status) {
-      case "pending": // first step
+      case "pending": // ✅ use assign instead of update
         return _buildMainButton(
           "Pick Up",
-              () => _updateJobStatus("picked_up"),
+              () => _assignJobToCurrentUser(),
         );
 
       case "picked_up":
@@ -316,7 +316,7 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
       case "en_route":
         return _buildMainButton(
           "Mark as Done",
-              () => _updateJobStatus("delivered"),
+              () => _simulateImageUpload(), // ✅ proof upload when marking delivered
         );
 
       case "delivered":

@@ -347,7 +347,7 @@ class JobCard extends StatelessWidget {
                 onPressed:
                 job.status == 'delivered' ? null : () => onPickUp(job),
                 child: Text(
-                  job.status == 'delivered' ? 'View Details' : 'View',
+                  job.status == 'delivered' ? 'View Details On Record Page' : 'View',
                 ),
               ),
             ),
