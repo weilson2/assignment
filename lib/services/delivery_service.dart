@@ -5,11 +5,10 @@ import '../models/delivery_models.dart';
 class DeliveryService {
   final SupabaseClient _supabase = SupabaseConfig.client;
 
-  // Get today's delivery jobs for current user
+  /// Get today's delivery jobs
   Future<List<DeliveryJob>> getTodayJobs() async {
     try {
-      final today = DateTime.now();
-      final todayString = today.toIso8601String().split('T')[0];
+      final today = DateTime.now().toIso8601String().split('T')[0];
 
       final response = await _supabase
           .from('delivery_jobs')
@@ -22,24 +21,22 @@ class DeliveryService {
                 name,
                 price,
                 image_url,
-                categories (
-                  name
-                )
+                categories (name)
               )
             )
           ''')
-          .eq('scheduled_date', todayString)
+          .eq('scheduled_date', today)
           .order('scheduled_start_time', ascending: true);
 
       return (response as List)
           .map((json) => DeliveryJob.fromJson(json))
           .toList();
-    } catch (error) {
-      throw Exception('Failed to fetch today\'s jobs: $error');
+    } catch (e) {
+      throw Exception("Failed to fetch today's jobs: $e");
     }
   }
 
-  // Get single delivery job by ID
+  /// Get job by ID
   Future<DeliveryJob?> getJobById(String jobId) async {
     try {
       final response = await _supabase
@@ -48,66 +45,70 @@ class DeliveryService {
             *,
             delivery_items (
               *,
-              products (
-                id,
-                name,
-                image_url
-              )
+              products (id, name, image_url)
             )
           ''')
           .eq('id', jobId)
           .maybeSingle();
 
       if (response == null) return null;
-
       return DeliveryJob.fromJson(response);
-    } catch (error) {
-      throw Exception('Failed to fetch job: $error');
+    } catch (e) {
+      throw Exception("Failed to fetch job: $e");
     }
   }
 
-  // Update job status
+  /// Update job status
   Future<bool> updateJobStatus(String jobId, String newStatus) async {
     try {
-      await _supabase
-          .from('delivery_jobs')
-          .update({
+      await _supabase.from('delivery_jobs').update({
         'status': newStatus,
         'updated_at': DateTime.now().toIso8601String(),
-        if (newStatus == 'delivered') 'delivered_at': DateTime.now().toIso8601String(),
-      })
-          .eq('id', jobId);
+        if (newStatus == 'delivered')
+          'delivered_at': DateTime.now().toIso8601String(),
+      }).eq('id', jobId);
 
       return true;
-    } catch (error) {
-      throw Exception('Failed to update job status: $error');
+    } catch (e) {
+      throw Exception("Failed to update status: $e");
     }
   }
 
-  // Simulate uploading proof image (for assignment without actual storage)
+  /// Assign job to current user
+  Future<bool> assignJobToCurrentUser(String jobId, String userId) async {
+    try {
+      await _supabase.from('delivery_jobs').update({
+        'assigned_personnel_id': userId,
+        'status': 'picked_up',
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', jobId);
+
+      return true;
+    } catch (e) {
+      throw Exception("Failed to assign job: $e");
+    }
+  }
+
+  /// Simulate proof image upload
   Future<String?> simulateUploadProofImage(String jobId) async {
     try {
-      // Generate a fake image URL for demonstration
-      final fakeImageUrl = 'https://fake-storage.com/delivery_proofs/$jobId/proof_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final fakeUrl =
+          "https://fake-storage.com/proofs/$jobId/${DateTime.now().millisecondsSinceEpoch}.jpg";
 
-      // Update job with fake proof image URL and mark as delivered
-      await _supabase
-          .from('delivery_jobs')
-          .update({
-        'proof_image_url': fakeImageUrl,
+      await _supabase.from('delivery_jobs').update({
+        'proof_image_url': fakeUrl,
         'status': 'delivered',
         'delivered_at': DateTime.now().toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
-      })
-          .eq('id', jobId);
+      }).eq('id', jobId);
 
-      return fakeImageUrl;
-    } catch (error) {
-      throw Exception('Failed to simulate proof upload: $error');
+      return fakeUrl;
+    } catch (e) {
+      throw Exception("Failed to simulate proof upload: $e");
     }
   }
 
-  // Get delivery jobs by status
+  /// Get jobs by status
   Future<List<DeliveryJob>> getJobsByStatus(String status) async {
     try {
       final response = await _supabase
@@ -121,9 +122,7 @@ class DeliveryService {
                 name,
                 price,
                 image_url,
-                categories (
-                  name
-                )
+                categories (name)
               )
             )
           ''')
@@ -133,12 +132,12 @@ class DeliveryService {
       return (response as List)
           .map((json) => DeliveryJob.fromJson(json))
           .toList();
-    } catch (error) {
-      throw Exception('Failed to fetch jobs by status: $error');
+    } catch (e) {
+      throw Exception("Failed to fetch jobs by status: $e");
     }
   }
 
-  // Get all delivery history
+  /// Get delivery history
   Future<List<DeliveryJob>> getDeliveryHistory() async {
     try {
       final response = await _supabase
@@ -152,9 +151,7 @@ class DeliveryService {
                 name,
                 price,
                 image_url,
-                categories (
-                  name
-                )
+                categories (name)
               )
             )
           ''')
@@ -163,63 +160,18 @@ class DeliveryService {
       return (response as List)
           .map((json) => DeliveryJob.fromJson(json))
           .toList();
-    } catch (error) {
-      throw Exception('Failed to fetch delivery history: $error');
+    } catch (e) {
+      throw Exception("Failed to fetch delivery history: $e");
     }
   }
 
-  // Assign job to current user (personnel)
-  Future<bool> assignJobToCurrentUser(String jobId, String userId) async {
-    try {
-      await _supabase
-          .from('delivery_jobs')
-          .update({
-        'assigned_personnel_id': userId,
-        'status': 'picked_up',
-        'updated_at': DateTime.now().toIso8601String(),
-      })
-          .eq('id', jobId);
-
-      return true;
-    } catch (error) {
-      throw Exception('Failed to assign job: $error');
-    }
-  }
-
-  // Simulate customer notification
+  /// Simulate customer notification
   Future<bool> notifyCustomer(String jobId) async {
     try {
-      // In a real app, this would send SMS/email to customer
-      // For assignment, we'll just simulate with a delay
       await Future.delayed(const Duration(milliseconds: 500));
-
       return true;
-    } catch (error) {
+    } catch (_) {
       return false;
     }
   }
-
-  Future<DeliveryJob?> getJobWithItems(String jobId) async {
-    final response = await _supabase
-        .from('delivery_jobs')
-        .select('''
-        *,
-        delivery_items (
-          id,
-          product_id,
-          quantity,
-          products (
-            id,
-            name
-          )
-        )
-      ''')
-        .eq('id', jobId)
-        .single();
-
-
-
-    return DeliveryJob.fromJson(response);
-  }
-
 }

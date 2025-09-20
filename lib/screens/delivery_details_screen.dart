@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/delivery_models.dart';
 import '../services/delivery_service.dart';
 
@@ -72,6 +73,51 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to update status: $error'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+  Future<void> _assignJobToCurrentUser() async {
+    if (job == null) return;
+    setState(() => isLoading = true);
+
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("User not logged in")),
+        );
+        return;
+      }
+
+      final success =
+      await _deliveryService.assignJobToCurrentUser(job!.id, userId);
+
+      if (success && mounted) {
+        setState(() {
+          job = job!.copyWith(
+            status: "picked_up",
+            assignedPersonnelId: userId,
+          );
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Job successfully assigned to you!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('assignJobToCurrentUser error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to assign job: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {

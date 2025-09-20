@@ -8,7 +8,7 @@ class DeliveryJob {
   final DateTime scheduledDate;
   final String scheduledStartTime;
   final String scheduledEndTime;
-  final String status; // 'pending', 'picked_up', 'en_route', 'delivered'
+  final String status; // pending, picked_up, en_route, delivered
   final String? assignedPersonnelId;
   final String? proofImageUrl;
   final DateTime? deliveredAt;
@@ -46,13 +46,13 @@ class DeliveryJob {
       id: json['id']?.toString() ?? '',
       customerName: json['customer_name']?.toString() ?? '',
       customerContact: json['customer_contact']?.toString() ?? '',
-      customerAddress: json['customer_address'] as String,
+      customerAddress: json['customer_address']?.toString() ?? '',
       scheduledDate: DateTime.parse(json['scheduled_date'] as String),
-      scheduledStartTime: json['scheduled_start_time'] as String,
-      scheduledEndTime: json['scheduled_end_time'] as String,
+      scheduledStartTime: json['scheduled_start_time']?.toString() ?? '',
+      scheduledEndTime: json['scheduled_end_time']?.toString() ?? '',
       status: json['status']?.toString() ?? '',
-      assignedPersonnelId: json['assigned_personnel_id']?.toString() ?? '',
-      proofImageUrl: json['proof_image_url']?.toString() ?? '',
+      assignedPersonnelId: json['assigned_personnel_id']?.toString(),
+      proofImageUrl: json['proof_image_url']?.toString(),
       deliveredAt: json['delivered_at'] != null
           ? DateTime.parse(json['delivered_at'] as String)
           : null,
@@ -60,9 +60,7 @@ class DeliveryJob {
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'] as String)
           : null,
-      items: (json['delivery_items'] as List<dynamic>?)
-          ?.map((item) => DeliveryItem.fromJson(item))
-          .toList() ?? [],
+      items: deliveryItems,
     );
   }
 
@@ -144,15 +142,17 @@ class DeliveryItem {
   });
 
   factory DeliveryItem.fromJson(Map<String, dynamic> json) {
-
     return DeliveryItem(
       id: json['id']?.toString() ?? '',
-      productId: json['product_id']?.toString() ?? '',
       deliveryJobId: json['delivery_job_id']?.toString() ?? '',
-      quantity: json['quantity'] as int,
-      createdAt: DateTime.parse(json['created_at'] as String),product: json['products'] != null
-        ? Product.fromJson(json['products'])
-        : null,
+      productId: json['product_id']?.toString() ?? '',
+      quantity: json['quantity'] is int
+          ? json['quantity']
+          : int.tryParse(json['quantity'].toString()) ?? 0,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      product: json['products'] != null
+          ? Product.fromJson(json['products'])
+          : null,
     );
   }
 
@@ -166,4 +166,3 @@ class DeliveryItem {
     };
   }
 }
-
