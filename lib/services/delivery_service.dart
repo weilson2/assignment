@@ -1,6 +1,8 @@
+import 'package:flutter/cupertino.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../models/delivery_models.dart';
+import 'dart:io';
 
 class DeliveryService {
   final SupabaseClient _supabase = SupabaseConfig.client;
@@ -91,22 +93,31 @@ class DeliveryService {
     }
   }
 
-  /// Simulate proof image upload
-  Future<String?> simulateUploadProofImage(String jobId) async {
+  /// Upload proof image upload
+  Future<String?> uploadProofImage(String jobId, File file) async {
     try {
-      final fakeUrl =
-          "https://fake-storage.com/proofs/$jobId/${DateTime.now().millisecondsSinceEpoch}.jpg";
+      final fileExt = file.path.split('.').last;
+      final fileName = 'proof_$jobId.${DateTime.now().millisecondsSinceEpoch}.$fileExt';
 
-      await _supabase.from('delivery_jobs').update({
-        'proof_image_url': fakeUrl,
+      final storage = Supabase.instance.client.storage.from('proofs'); // ✅ make sure you have a "proofs" bucket in Supabase
+      await storage.upload(fileName, file);
+
+      final publicUrl = storage.getPublicUrl(fileName);
+
+      // ✅ update job with proof URL
+      await Supabase.instance.client
+          .from('delivery_jobs')
+          .update({
         'status': 'delivered',
+        'proof_image_url': publicUrl,
         'delivered_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', jobId);
+      })
+          .eq('id', jobId);
 
-      return fakeUrl;
+      return publicUrl;
     } catch (e) {
-      throw Exception("Failed to simulate proof upload: $e");
+      debugPrint("uploadProofImage error: $e");
+      return null;
     }
   }
 

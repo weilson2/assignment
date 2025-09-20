@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/delivery_models.dart';
 import '../services/delivery_service.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class DeliveryDetailsScreen extends StatefulWidget {
   const DeliveryDetailsScreen({super.key});
@@ -125,23 +127,45 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     }
   }
 
-  Future<void> _simulateImageUpload() async {
+  Future<void> _uploadProofImage() async {
     if (job == null) return;
+
+    final picker = ImagePicker();
+
+    // 🔥 Changed from camera → gallery
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No image selected')),
+      );
+      return;
+    }
+
     setState(() => isLoading = true);
 
     try {
-      String? imageUrl = await _deliveryService.simulateUploadProofImage(job!.id);
+      File file = File(pickedFile.path);
+
+      // ✅ Call service to upload image
+      String? imageUrl = await _deliveryService.uploadProofImage(job!.id, file);
+
       if (imageUrl != null && mounted) {
         setState(() {
-          job = job!.copyWith(status: 'delivered', proofImageUrl: imageUrl, deliveredAt: DateTime.now());
+          job = job!.copyWith(
+            status: 'delivered',
+            proofImageUrl: imageUrl,
+            deliveredAt: DateTime.now(),
+          );
           proofUploaded = true;
         });
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Delivery completed successfully!'), backgroundColor: Colors.green),
         );
       }
     } catch (error) {
-      debugPrint('simulateUploadProofImage error: $error');
+      debugPrint('uploadProofImage error: $error');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to upload proof: $error'), backgroundColor: Colors.red),
@@ -151,6 +175,7 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
       if (mounted) setState(() => isLoading = false);
     }
   }
+
 
   Future<void> _viewProofImage() async {
     if (job?.proofImageUrl == null) {
@@ -316,7 +341,10 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
       case "en_route":
         return _buildMainButton(
           "Mark as Done",
-              () => _simulateImageUpload(), // ✅ proof upload when marking delivered
+              () {
+            print("Mark as Done tapped"); // check in console
+            _uploadProofImage();
+          },
         );
 
       case "delivered":

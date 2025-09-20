@@ -13,7 +13,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final DeliveryService _deliveryService = DeliveryService();
   List<DeliveryJob> todayJobs = [];
+  List<DeliveryJob> filteredJobs = [];
   bool isLoading = true;
+  String? selectedStatus; // filter option
 
   @override
   void initState() {
@@ -27,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final jobs = await _deliveryService.getTodayJobs();
       setState(() {
         todayJobs = jobs;
+        filteredJobs = jobs; // initially show all
         isLoading = false;
       });
     } catch (error) {
@@ -42,6 +45,17 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _filterJobs(String? status) {
+    setState(() {
+      selectedStatus = status;
+      if (status == null || status == "all") {
+        filteredJobs = todayJobs;
+      } else {
+        filteredJobs = todayJobs.where((job) => job.status == status).toList();
+      }
+    });
+  }
+
   Future<void> _handlePickUp(DeliveryJob job) async {
     final result = await Navigator.pushNamed(
       context,
@@ -53,14 +67,14 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         final index = todayJobs.indexWhere((j) => j.id == result.id);
         if (index != -1) {
-          todayJobs[index] = result; //  update only that job
+          todayJobs[index] = result; // update only that job
+          _filterJobs(selectedStatus); // refresh filter
         }
       });
     }
   }
 
-
-    String _formatTimeSlot(String startTime, String endTime) {
+  String _formatTimeSlot(String startTime, String endTime) {
     try {
       final start = _convertTo12Hour(startTime);
       final end = _convertTo12Hour(endTime);
@@ -154,10 +168,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         const Text(
                           "Today's Tasks",
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                         Text(
-                          '${todayJobs.length} jobs',
+                          '${filteredJobs.length} jobs',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey[600],
@@ -167,11 +182,56 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 10),
 
+                    // Filter Dropdown
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.2),
+                            spreadRadius: 1,
+                            blurRadius: 5,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.filter_list, color: Colors.green),
+                          const SizedBox(width: 10),
+                          const Text(
+                            "Filter by status:",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: selectedStatus ?? "all",
+                                isExpanded: true,
+                                items: const [
+                                  DropdownMenuItem(value: "all", child: Text("All")),
+                                  DropdownMenuItem(value: "pending", child: Text("Pending")),
+                                  DropdownMenuItem(value: "picked_up", child: Text("Picked Up")),
+                                  DropdownMenuItem(value: "en_route", child: Text("En Route")),
+                                  DropdownMenuItem(value: "delivered", child: Text("Delivered")),
+                                ],
+                                onChanged: _filterJobs,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
                     // Jobs list
                     Expanded(
                       child: isLoading
                           ? const Center(child: CircularProgressIndicator())
-                          : todayJobs.isEmpty
+                          : filteredJobs.isEmpty
                           ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -200,10 +260,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           : RefreshIndicator(
                         onRefresh: _loadTodayJobs,
                         child: ListView.builder(
-                          itemCount: todayJobs.length,
+                          itemCount: filteredJobs.length,
                           itemBuilder: (context, index) {
                             return JobCard(
-                              job: todayJobs[index],
+                              job: filteredJobs[index],
                               formatTimeSlot: _formatTimeSlot,
                               onPickUp: _handlePickUp,
                             );
@@ -276,7 +336,8 @@ class JobCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: statusColor.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
@@ -292,13 +353,15 @@ class JobCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: Colors.green[800],
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    formatTimeSlot(job.scheduledStartTime, job.scheduledEndTime),
+                    formatTimeSlot(
+                        job.scheduledStartTime, job.scheduledEndTime),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -341,13 +404,15 @@ class JobCard extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 8),
                 ),
                 onPressed:
                 job.status == 'delivered' ? null : () => onPickUp(job),
                 child: Text(
-                  job.status == 'delivered' ? 'View Details On Record Page' : 'View',
+                  job.status == 'delivered'
+                      ? 'View Details On Record Page'
+                      : 'View',
                 ),
               ),
             ),
