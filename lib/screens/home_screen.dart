@@ -43,27 +43,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _handlePickUp(DeliveryJob job) async {
-    try {
-      final result = await Navigator.pushNamed(
-        context,
-        '/delivery-details',
-        arguments: job,
-      );
+    final result = await Navigator.pushNamed(
+      context,
+      '/delivery-details',
+      arguments: job,
+    );
 
-      if (result == true) {
-        _loadTodayJobs();
-      }
-    } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${error.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+    if (result is DeliveryJob) {
+      setState(() {
+        final index = todayJobs.indexWhere((j) => j.id == result.id);
+        if (index != -1) {
+          todayJobs[index] = result; //  update only that job
+        }
+      });
     }
   }
 
-  String _formatTimeSlot(String startTime, String endTime) {
+
+    String _formatTimeSlot(String startTime, String endTime) {
     try {
       final start = _convertTo12Hour(startTime);
       final end = _convertTo12Hour(endTime);
@@ -350,7 +347,7 @@ class JobCard extends StatelessWidget {
                 onPressed:
                 job.status == 'delivered' ? null : () => onPickUp(job),
                 child: Text(
-                  job.status == 'delivered' ? 'View Details' : 'Pick up',
+                  job.status == 'delivered' ? 'View Details' : 'View',
                 ),
               ),
             ),

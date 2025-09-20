@@ -51,11 +51,7 @@ class DeliveryService {
               products (
                 id,
                 name,
-                price,
-                image_url,
-                categories (
-                  name
-                )
+                image_url
               )
             )
           ''')
@@ -202,4 +198,28 @@ class DeliveryService {
       return false;
     }
   }
+
+  Future<DeliveryJob?> getJobWithItems(String jobId) async {
+    final response = await _supabase
+        .from('delivery_jobs')
+        .select('''
+        *,
+        delivery_items (
+          id,
+          product_id,
+          quantity,
+          products (
+            id,
+            name
+          )
+        )
+      ''')
+        .eq('id', jobId)
+        .single();
+
+
+
+    return DeliveryJob.fromJson(response);
+  }
+
 }

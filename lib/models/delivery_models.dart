@@ -43,16 +43,16 @@ class DeliveryJob {
     }
 
     return DeliveryJob(
-      id: json['id'] as String,
-      customerName: json['customer_name'] as String,
-      customerContact: json['customer_contact'] as String,
+      id: json['id']?.toString() ?? '',
+      customerName: json['customer_name']?.toString() ?? '',
+      customerContact: json['customer_contact']?.toString() ?? '',
       customerAddress: json['customer_address'] as String,
       scheduledDate: DateTime.parse(json['scheduled_date'] as String),
       scheduledStartTime: json['scheduled_start_time'] as String,
       scheduledEndTime: json['scheduled_end_time'] as String,
-      status: json['status'] as String,
-      assignedPersonnelId: json['assigned_personnel_id'] as String?,
-      proofImageUrl: json['proof_image_url'] as String?,
+      status: json['status']?.toString() ?? '',
+      assignedPersonnelId: json['assigned_personnel_id']?.toString() ?? '',
+      proofImageUrl: json['proof_image_url']?.toString() ?? '',
       deliveredAt: json['delivered_at'] != null
           ? DateTime.parse(json['delivered_at'] as String)
           : null,
@@ -60,7 +60,9 @@ class DeliveryJob {
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'] as String)
           : null,
-      items: deliveryItems,
+      items: (json['delivery_items'] as List<dynamic>?)
+          ?.map((item) => DeliveryItem.fromJson(item))
+          .toList() ?? [],
     );
   }
 
@@ -142,18 +144,15 @@ class DeliveryItem {
   });
 
   factory DeliveryItem.fromJson(Map<String, dynamic> json) {
-    Product? productDetails;
-    if (json['products'] != null) {
-      productDetails = Product.fromJson(json['products']);
-    }
 
     return DeliveryItem(
-      id: json['id'] as String,
-      deliveryJobId: json['delivery_job_id'] as String,
-      productId: json['product_id'] as String,
+      id: json['id']?.toString() ?? '',
+      productId: json['product_id']?.toString() ?? '',
+      deliveryJobId: json['delivery_job_id']?.toString() ?? '',
       quantity: json['quantity'] as int,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      product: productDetails,
+      createdAt: DateTime.parse(json['created_at'] as String),product: json['products'] != null
+        ? Product.fromJson(json['products'])
+        : null,
     );
   }
 
@@ -167,3 +166,4 @@ class DeliveryItem {
     };
   }
 }
+

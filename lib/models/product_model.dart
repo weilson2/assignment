@@ -31,25 +31,26 @@ class Product {
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      description: json['description'] as String? ?? '',
-      categoryId: json['category_id'] as String,
-      categoryName: json['categories']?['name'] as String? ?? 'Unknown',
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? 'Unknown Product',
+      description: json['description']?.toString() ?? '',
+      categoryId: json['category_id']?.toString() ?? '',
+      categoryName: json['categories']?['name']?.toString() ?? 'Unknown',
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       quantityInStock: json['quantity_in_stock'] as int? ?? 0,
       lastRestocked: json['last_restocked'] != null
-          ? DateTime.parse(json['last_restocked'] as String)
+          ? DateTime.tryParse(json['last_restocked'].toString())
           : null,
-      supplierName: json['supplier_name'] as String? ?? '',
-      warehouseLocation: json['warehouse_location'] as String? ?? '',
-      imageUrl: json['image_url'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      supplierName: json['supplier_name']?.toString() ?? '',
+      warehouseLocation: json['warehouse_location']?.toString() ?? '',
+      imageUrl: json['image_url']?.toString(),
+      createdAt: DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now(),
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'] as String)
+          ? DateTime.tryParse(json['updated_at'].toString())
           : null,
     );
   }
+
 
   Map<String, dynamic> toJson() {
     return {
