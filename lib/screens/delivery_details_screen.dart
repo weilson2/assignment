@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/delivery_models.dart';
 import '../services/delivery_service.dart';
+import '../services/stock_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
@@ -14,6 +15,8 @@ class DeliveryDetailsScreen extends StatefulWidget {
 
 class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
   final DeliveryService _deliveryService = DeliveryService();
+  final StockService _stockService = StockService();
+
 
   DeliveryJob? job;
   bool isLoading = false;
@@ -132,7 +135,7 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
 
     final picker = ImagePicker();
 
-    // 🔥 Changed from camera → gallery
+    // 🔥 Use gallery (you can change back to camera if you want)
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile == null) {
@@ -147,22 +150,68 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     try {
       File file = File(pickedFile.path);
 
-      // ✅ Call service to upload image
+      // ✅ Upload proof image
       String? imageUrl = await _deliveryService.uploadProofImage(job!.id, file);
 
-      if (imageUrl != null && mounted) {
-        setState(() {
-          job = job!.copyWith(
-            status: 'delivered',
-            proofImageUrl: imageUrl,
-            deliveredAt: DateTime.now(),
-          );
-          proofUploaded = true;
-        });
+      if (imageUrl != null) {
+        // ✅ Update status to delivered
+        bool success = await _deliveryService.updateJobStatus(job!.id, 'delivered');
+        if (success) {
+          // ✅ Deduct stock for each delivered item
+          bool allOk = true;
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Delivery completed successfully!'), backgroundColor: Colors.green),
-        );
+          for (final item in job!.items) {
+            final productId = item.productId;
+            final qtyOrdered = item.quantity;
+
+            final latestProduct = await _stockService.getProductById(productId);
+            if (latestProduct == null) {
+              allOk = false;
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Product $productId not found when updating stock')),
+                );
+              }
+              continue;
+            }
+
+            final currentStock = latestProduct.quantityInStock;
+            final newStock = currentStock - qtyOrdered;
+            final newStockClamped = newStock < 0 ? 0 : newStock;
+
+            final updated = await _stockService.updateProductStock(productId, newStockClamped);
+            if (!updated) {
+              allOk = false;
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to update stock for ${latestProduct.name}')),
+                );
+              }
+            }
+          }
+
+          // ✅ Update UI state
+          if (mounted) {
+            setState(() {
+              job = job!.copyWith(
+                status: 'delivered',
+                proofImageUrl: imageUrl,
+                deliveredAt: DateTime.now(),
+              );
+              proofUploaded = true;
+            });
+
+            if (allOk) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Delivery completed & stock updated!'), backgroundColor: Colors.green),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Delivery done — but some stock updates failed.')),
+              );
+            }
+          }
+        }
       }
     } catch (error) {
       debugPrint('uploadProofImage error: $error');
@@ -176,7 +225,6 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     }
   }
 
-
   Future<void> _viewProofImage() async {
     if (job?.proofImageUrl == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No proof image available')));
@@ -187,25 +235,48 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
       context: context,
       builder: (context) {
         return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Container(
             padding: const EdgeInsets.all(16),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              const Text('Delivery Proof', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              // show image if real url, otherwise placeholder
-              Container(
-                height: 220,
-                width: double.infinity,
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.grey[200]),
-                child: job!.proofImageUrl != null
-                    ? Image.network(job!.proofImageUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) {
-                  return const Center(child: Icon(Icons.broken_image, size: 48));
-                })
-                    : const Center(child: Icon(Icons.image, size: 48)),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))
-            ]),
+            constraints: const BoxConstraints(
+              maxWidth: 500,  // ✅ Bigger than before
+              maxHeight: 620, // ✅ Keeps dialog neat
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Delivery Proof',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+
+                // ✅ Larger square image
+                SizedBox(
+                  width: 400,
+                  height: 400,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: job!.proofImageUrl != null
+                        ? Image.network(
+                      job!.proofImageUrl!,
+                      fit: BoxFit.contain, // shows full image without cropping
+                      errorBuilder: (_, __, ___) {
+                        return const Center(
+                            child: Icon(Icons.broken_image, size: 48));
+                      },
+                    )
+                        : const Center(child: Icon(Icons.image, size: 48)),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                )
+              ],
+            ),
           ),
         );
       },
@@ -215,20 +286,102 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
   Future<void> _notifyCustomer() async {
     if (job == null) return;
     setState(() => isLoading = true);
+
     try {
       bool success = await _deliveryService.notifyCustomer(job!.id);
       if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Customer ${job!.customerName} has been notified!')));
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 340,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(28),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      //Success Logo
+                      Container(
+                        width: 120,
+                        height: 120,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.green,
+                        ),
+                        child: const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 70,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      //Success title
+                      const Text(
+                        "SUCCESS!",
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      //Message
+                      const Text(
+                        "User has been notified.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 18, color: Colors.black54),
+                      ),
+                      const SizedBox(height: 28),
+
+                      //Continue button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          child: const Text(
+                            "Continue",
+                            style: TextStyle(fontSize: 18),
+                          ),
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
       }
     } catch (e) {
       debugPrint('notifyCustomer error: $e');
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to notify customer')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to notify customer')),
+        );
+      }
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
   }
 
-  // ========== UI helpers ==========
 
   Widget _buildCustomerInfo() {
     if (job == null) return const SizedBox.shrink();
@@ -326,7 +479,7 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     if (job == null) return const SizedBox.shrink();
 
     switch (job!.status) {
-      case "pending": // ✅ use assign instead of update
+      case "pending":
         return _buildMainButton(
           "Pick Up",
               () => _assignJobToCurrentUser(),
@@ -397,6 +550,7 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Delivery Detail'),
+          foregroundColor: Colors.white,
           backgroundColor: const Color(0xFF2E7D32),
         ),
         body: isLoading && job == null

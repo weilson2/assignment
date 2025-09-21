@@ -411,7 +411,7 @@ class JobCard extends StatelessWidget {
                 job.status == 'delivered' ? null : () => onPickUp(job),
                 child: Text(
                   job.status == 'delivered'
-                      ? 'View Details On Record Page'
+                      ? 'The parcel has been delivered successfully!'
                       : 'View',
                 ),
               ),

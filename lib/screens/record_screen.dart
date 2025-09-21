@@ -137,6 +137,7 @@ class _RecordScreenState extends State<RecordScreen>
     return Scaffold(
         appBar: AppBar(
           title: const Text('Delivery Records'),
+          foregroundColor: Colors.white,
           backgroundColor: const Color(0xFF2E7D32),
           bottom: TabBar(
             controller: _tabController,
