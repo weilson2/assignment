@@ -100,7 +100,7 @@ class _RecordScreenState extends State<RecordScreen>
                       ),
                     ),
                     onPressed: () {
-                      // ✅ Navigate to DeliveryDetailsScreen with job
+                      // Navigate to DeliveryDetailsScreen with job
                       Navigator.push(
                         context,
                         MaterialPageRoute(
