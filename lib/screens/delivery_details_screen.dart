@@ -5,6 +5,7 @@ import '../services/delivery_service.dart';
 import '../services/stock_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'product_detail_screen.dart'; // Add this import
 
 class DeliveryDetailsScreen extends StatefulWidget {
   const DeliveryDetailsScreen({super.key});
@@ -16,7 +17,6 @@ class DeliveryDetailsScreen extends StatefulWidget {
 class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
   final DeliveryService _deliveryService = DeliveryService();
   final StockService _stockService = StockService();
-
 
   DeliveryJob? job;
   bool isLoading = false;
@@ -84,6 +84,7 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
       if (mounted) setState(() => isLoading = false);
     }
   }
+
   Future<void> _assignJobToCurrentUser() async {
     if (job == null) return;
     setState(() => isLoading = true);
@@ -382,6 +383,49 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     }
   }
 
+  // ✅ NEW METHOD: Navigate to product details (fetch from Supabase)
+  Future<void> _navigateToProductDetails(String productId) async {
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      // Fetch full product details from Supabase
+      final fullProduct = await _stockService.getProductById(productId);
+
+      if (!mounted) return;
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      if (fullProduct != null) {
+        // Use the existing route defined in main.dart
+        Navigator.pushNamed(
+          context,
+          '/product-detail', // This matches your main.dart route
+          arguments: fullProduct,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Product not found')),
+        );
+      }
+    } catch (error) {
+      if (!mounted) return;
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load product details: $error')),
+      );
+    }
+  }
 
   Widget _buildCustomerInfo() {
     if (job == null) return const SizedBox.shrink();
@@ -454,7 +498,14 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
               ),
               title: Text(item.product?.name ?? 'Product ${item.productId}', style: const TextStyle(fontWeight: FontWeight.bold)),
               subtitle: Text('ID: ${item.productId}\nQuantity: x${item.quantity}', style: const TextStyle(height: 1.4)),
-              trailing: TextButton(onPressed: () {/* navigate to product details if any */}, child: const Text('view details >')),
+              // ✅ UPDATED: Now fetches full product data from Supabase
+              trailing: TextButton(
+                onPressed: () => _navigateToProductDetails(item.productId),
+                child: const Text(
+                  'view details >',
+                  style: TextStyle(color: Colors.blue),
+                ),
+              ),
             ),
           );
         },

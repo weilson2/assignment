@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/bottom_nav.dart';
 import '../models/delivery_models.dart';
-import 'delivery_details_screen.dart'; // ✅ make sure this import path matches your project
+import 'delivery_details_screen.dart';
 
 class RecordScreen extends StatefulWidget {
   const RecordScreen({super.key});
@@ -45,13 +45,89 @@ class _RecordScreenState extends State<RecordScreen>
             )
           )
         ''')
-        .eq('assigned_personnel_id', userId) // ✅ only for current user
+        .eq('assigned_personnel_id', userId)
         .order('created_at', ascending: false);
 
     if (response is List) {
       return response.cast<Map<String, dynamic>>();
     }
     return [];
+  }
+
+  // Format date and time to readable format
+  String _formatDateTime(String? dateTimeString) {
+    if (dateTimeString == null) return 'Not available';
+
+    try {
+      final dateTime = DateTime.parse(dateTimeString);
+
+      // Format date part
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+
+      final day = dateTime.day;
+      final month = months[dateTime.month - 1];
+      final year = dateTime.year;
+
+      // Format time part with AM/PM
+      final hour = dateTime.hour;
+      final minute = dateTime.minute.toString().padLeft(2, '0');
+      final period = hour >= 12 ? 'PM' : 'AM';
+      final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+
+      return '$day $month $year, $displayHour:$minute $period';
+    } catch (e) {
+      return 'Invalid date';
+    }
+  }
+
+  // Format just the date part
+  String _formatDate(String? dateString) {
+    if (dateString == null) return 'Not available';
+
+    try {
+      final date = DateTime.parse(dateString);
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+
+      return '${date.day} ${months[date.month - 1]} ${date.year}';
+    } catch (e) {
+      return 'Invalid date';
+    }
+  }
+
+  // Format time range for scheduled times
+  String _formatTimeRange(String? startTime, String? endTime) {
+    if (startTime == null || endTime == null) return 'Not scheduled';
+
+    try {
+      // These might be just time strings like "14:30:00" or full datetime
+      String formatTime(String timeStr) {
+        DateTime time;
+        if (timeStr.contains('T')) {
+          // Full datetime string
+          time = DateTime.parse(timeStr);
+        } else {
+          // Just time string, create a dummy date
+          time = DateTime.parse('2000-01-01T$timeStr');
+        }
+
+        final hour = time.hour;
+        final minute = time.minute.toString().padLeft(2, '0');
+        final period = hour >= 12 ? 'PM' : 'AM';
+        final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+
+        return '$displayHour:$minute $period';
+      }
+
+      return '${formatTime(startTime)} - ${formatTime(endTime)}';
+    } catch (e) {
+      return '$startTime - $endTime'; // Fallback to original if parsing fails
+    }
   }
 
   Widget _buildRecordList(List<Map<String, dynamic>> records) {
@@ -65,7 +141,7 @@ class _RecordScreenState extends State<RecordScreen>
         final record = records[index];
         final status = (record['status'] ?? '').toString().toLowerCase();
 
-        // ✅ Convert JSON record into DeliveryJob model
+        // Convert JSON record into DeliveryJob model
         final job = DeliveryJob.fromJson(record);
 
         return Card(
@@ -85,10 +161,10 @@ class _RecordScreenState extends State<RecordScreen>
                 Text('Customer: ${record['customer_name']}'),
                 Text('Contact: ${record['customer_contact']}'),
                 Text('Address: ${record['customer_address']}'),
-                Text('Scheduled: ${record['scheduled_date']} '
-                    '${record['scheduled_start_time']} - ${record['scheduled_end_time']}'),
+                Text('Scheduled: ${_formatDate(record['scheduled_date'])} '
+                    '${_formatTimeRange(record['scheduled_start_time'], record['scheduled_end_time'])}'),
                 if (status == 'delivered' && record['delivered_at'] != null)
-                  Text('Delivered At: ${record['delivered_at']}'),
+                  Text('Delivered At: ${_formatDateTime(record['delivered_at'])}'),
                 const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerLeft,
@@ -135,22 +211,22 @@ class _RecordScreenState extends State<RecordScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: const Text('Delivery Records'),
-          foregroundColor: Colors.white,
-          backgroundColor: const Color(0xFF2E7D32),
-          bottom: TabBar(
-            controller: _tabController,
-            indicatorColor: Colors.white,
-            labelColor: Colors.white,          // ✅ active tab text
-            unselectedLabelColor: Colors.white70, // ✅ inactive tab text
-            tabs: const [
-              Tab(text: "Picked Up"),
-              Tab(text: "En Route"),
-              Tab(text: "Delivered"),
-            ],
-          ),
+      appBar: AppBar(
+        title: const Text('Delivery Records'),
+        foregroundColor: Colors.white,
+        backgroundColor: const Color(0xFF2E7D32),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          tabs: const [
+            Tab(text: "Picked Up"),
+            Tab(text: "En Route"),
+            Tab(text: "Delivered"),
+          ],
         ),
+      ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _recordsFuture,
         builder: (context, snapshot) {
