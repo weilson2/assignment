@@ -4,6 +4,7 @@ import '../widgets/bottom_nav.dart';
 import '../models/delivery_models.dart';
 import 'delivery_details_screen.dart';
 
+//use stateful because the screen changes (loads data, switches tabs).
 class RecordScreen extends StatefulWidget {
   const RecordScreen({super.key});
 
@@ -14,16 +15,17 @@ class RecordScreen extends StatefulWidget {
 class _RecordScreenState extends State<RecordScreen>
     with SingleTickerProviderStateMixin {
   final supabase = Supabase.instance.client;
-  late Future<List<Map<String, dynamic>>> _recordsFuture;
-  late TabController _tabController;
+  late Future<List<Map<String, dynamic>>> _recordsFuture;//a Future that will hold the records we fetch from the database.
+  late TabController _tabController;//controls the 3 tabs
 
   @override
   void initState() {
     super.initState();
-    _recordsFuture = _fetchRecords();
+    _recordsFuture = _fetchRecords();// Load delivery jobs when screen starts
     _tabController = TabController(length: 3, vsync: this);
   }
 
+  //It first checks if a user is logged in. If not, return empty list.
   Future<List<Map<String, dynamic>>> _fetchRecords() async {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) {
@@ -31,6 +33,9 @@ class _RecordScreenState extends State<RecordScreen>
       return [];
     }
 
+    //Get all delivery jobs for the logged-in user.
+    // Also fetch related items (delivery_items) and products info (products).
+    // Order them by newest first (created_at time).
     final response = await supabase
         .from('delivery_jobs')
         .select('''
@@ -48,20 +53,21 @@ class _RecordScreenState extends State<RecordScreen>
         .eq('assigned_personnel_id', userId)
         .order('created_at', ascending: false);
 
+    //if something goes wrong, return an empty list
     if (response is List) {
       return response.cast<Map<String, dynamic>>();
     }
     return [];
   }
 
-  // Format date and time to readable format
+  //format date and time to readable format
   String _formatDateTime(String? dateTimeString) {
     if (dateTimeString == null) return 'Not available';
 
     try {
       final dateTime = DateTime.parse(dateTimeString);
 
-      // Format date part
+      //format date part
       const months = [
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
@@ -71,7 +77,7 @@ class _RecordScreenState extends State<RecordScreen>
       final month = months[dateTime.month - 1];
       final year = dateTime.year;
 
-      // Format time part with AM/PM
+      //format time part with am/pm
       final hour = dateTime.hour;
       final minute = dateTime.minute.toString().padLeft(2, '0');
       final period = hour >= 12 ? 'PM' : 'AM';
@@ -83,7 +89,7 @@ class _RecordScreenState extends State<RecordScreen>
     }
   }
 
-  // Format just the date part
+  //format just the date part
   String _formatDate(String? dateString) {
     if (dateString == null) return 'Not available';
 
@@ -100,19 +106,19 @@ class _RecordScreenState extends State<RecordScreen>
     }
   }
 
-  // Format time range for scheduled times
+  //format time range for scheduled times
   String _formatTimeRange(String? startTime, String? endTime) {
     if (startTime == null || endTime == null) return 'Not scheduled';
 
     try {
-      // These might be just time strings like "14:30:00" or full datetime
+      //these might be just time strings like "14:30:00" or full datetime
       String formatTime(String timeStr) {
         DateTime time;
         if (timeStr.contains('T')) {
-          // Full datetime string
+          //full datetime string
           time = DateTime.parse(timeStr);
         } else {
-          // Just time string, create a dummy date
+          //just time string create a dummy date
           time = DateTime.parse('2000-01-01T$timeStr');
         }
 
@@ -130,11 +136,13 @@ class _RecordScreenState extends State<RecordScreen>
     }
   }
 
+  //If there are no jobs, show a message “No records found”
   Widget _buildRecordList(List<Map<String, dynamic>> records) {
     if (records.isEmpty) {
       return const Center(child: Text("No records found"));
     }
 
+    //extract its status
     return ListView.builder(
       itemCount: records.length,
       itemBuilder: (context, index) {
@@ -144,6 +152,7 @@ class _RecordScreenState extends State<RecordScreen>
         // Convert JSON record into DeliveryJob model
         final job = DeliveryJob.fromJson(record);
 
+        //show record in card
         return Card(
           color: const Color(0xFFF1F8E9),
           margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -163,6 +172,7 @@ class _RecordScreenState extends State<RecordScreen>
                 Text('Address: ${record['customer_address']}'),
                 Text('Scheduled: ${_formatDate(record['scheduled_date'])} '
                     '${_formatTimeRange(record['scheduled_start_time'], record['scheduled_end_time'])}'),
+                //if the job was delivered show the delivered date/time
                 if (status == 'delivered' && record['delivered_at'] != null)
                   Text('Delivered At: ${_formatDateTime(record['delivered_at'])}'),
                 const SizedBox(height: 8),
@@ -176,7 +186,7 @@ class _RecordScreenState extends State<RecordScreen>
                       ),
                     ),
                     onPressed: () {
-                      // Navigate to DeliveryDetailsScreen with job
+                      //navigate to DeliveryDetailsScreen with job
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -208,6 +218,7 @@ class _RecordScreenState extends State<RecordScreen>
     );
   }
 
+  //main build
   @override
   Widget build(BuildContext context) {
     return Scaffold(

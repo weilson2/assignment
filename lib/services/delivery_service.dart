@@ -7,7 +7,7 @@ import 'dart:io';
 class DeliveryService {
   final SupabaseClient _supabase = SupabaseConfig.client;
 
-  /// Get today's delivery jobs
+  //get today's delivery jobs
   Future<List<DeliveryJob>> getTodayJobs() async {
     try {
       final userId = _supabase.auth.currentUser?.id;
@@ -40,7 +40,7 @@ class DeliveryService {
     }
   }
 
-  /// Get job by ID
+  //get job by ID
   Future<DeliveryJob?> getJobById(String jobId) async {
     try {
       final response = await _supabase
@@ -62,7 +62,7 @@ class DeliveryService {
     }
   }
 
-  /// Update job status
+  //update job status
   Future<bool> updateJobStatus(String jobId, String newStatus) async {
     try {
       await _supabase.from('delivery_jobs').update({
@@ -78,7 +78,7 @@ class DeliveryService {
     }
   }
 
-  /// Assign job to current user
+  //assign job to current user
   Future<bool> assignJobToCurrentUser(String jobId, String userId) async {
     try {
       await _supabase.from('delivery_jobs').update({
@@ -93,7 +93,7 @@ class DeliveryService {
     }
   }
 
-  /// Upload proof image upload
+  //upload proof image upload
   Future<String?> uploadProofImage(String jobId, File file) async {
     try {
       final fileExt = file.path.split('.').last;
@@ -104,7 +104,7 @@ class DeliveryService {
 
       final publicUrl = storage.getPublicUrl(fileName);
 
-      // ✅ update job with proof URL
+      //update job with proof URL
       await Supabase.instance.client
           .from('delivery_jobs')
           .update({
@@ -121,7 +121,7 @@ class DeliveryService {
     }
   }
 
-  /// Get jobs by status
+  //get jobs by status
   Future<List<DeliveryJob>> getJobsByStatus(String status) async {
     try {
       final response = await _supabase
@@ -150,7 +150,7 @@ class DeliveryService {
     }
   }
 
-  /// Get delivery history
+  //get delivery history
   Future<List<DeliveryJob>> getDeliveryHistory() async {
     try {
       final response = await _supabase
@@ -178,7 +178,7 @@ class DeliveryService {
     }
   }
 
-  /// Simulate customer notification
+  //simulate customer notification
   Future<bool> notifyCustomer(String jobId) async {
     try {
       await Future.delayed(const Duration(milliseconds: 500));

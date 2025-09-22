@@ -8,7 +8,7 @@ class DeliveryJob {
   final DateTime scheduledDate;
   final String scheduledStartTime;
   final String scheduledEndTime;
-  final String status; // pending, picked_up, en_route, delivered
+  final String status;
   final String? assignedPersonnelId;
   final String? proofImageUrl;
   final DateTime? deliveredAt;
@@ -33,10 +33,11 @@ class DeliveryJob {
     this.items = const [],
   });
 
+  //create DeliveryJob object from JSON data
   factory DeliveryJob.fromJson(Map<String, dynamic> json) {
-    // Parse delivery items if they exist
     List<DeliveryItem> deliveryItems = [];
     if (json['delivery_items'] != null) {
+      //convert each delivery_items entry into DeliveryItem object
       deliveryItems = (json['delivery_items'] as List)
           .map((item) => DeliveryItem.fromJson(item))
           .toList();
@@ -63,7 +64,7 @@ class DeliveryJob {
       items: deliveryItems,
     );
   }
-
+  //convert DeliveryJob object → JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -82,6 +83,7 @@ class DeliveryJob {
     };
   }
 
+  //copy an existing DeliveryJob and change only selected fields
   DeliveryJob copyWith({
     String? id,
     String? customerName,
@@ -116,21 +118,22 @@ class DeliveryJob {
     );
   }
 
+  //helper property → show time slot in a single string
   String get formattedTimeSlot => '$scheduledStartTime - $scheduledEndTime';
-
+//status checkers
   bool get isPending => status == 'pending';
   bool get isPickedUp => status == 'picked_up';
   bool get isEnRoute => status == 'en_route';
   bool get isDelivered => status == 'delivered';
 }
-
+//product inside a delivery job with product info and quantity
 class DeliveryItem {
   final String id;
   final String deliveryJobId;
   final String productId;
   final int quantity;
   final DateTime createdAt;
-  final Product? product; // Optional product details
+  final Product? product;
 
   DeliveryItem({
     required this.id,
@@ -141,6 +144,7 @@ class DeliveryItem {
     this.product,
   });
 
+  //create DeliveryItem from JSON
   factory DeliveryItem.fromJson(Map<String, dynamic> json) {
     return DeliveryItem(
       id: json['id']?.toString() ?? '',
@@ -155,7 +159,7 @@ class DeliveryItem {
           : null,
     );
   }
-
+//convert DeliveryItem object → JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,

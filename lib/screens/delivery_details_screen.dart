@@ -5,7 +5,15 @@ import '../services/delivery_service.dart';
 import '../services/stock_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'product_detail_screen.dart'; // Add this import
+
+// DeliveryDetailsScreen Widget
+// This screen shows details of a single delivery job.
+// It allows delivery personnel to:
+//   - View customer info and products in the order
+//   - Update delivery job status (Pending → Picked up → En Route → Delivered)
+//   - Upload proof image when delivered
+//   - Notify customer after delivery
+//   - Check product details (stock)
 
 class DeliveryDetailsScreen extends StatefulWidget {
   const DeliveryDetailsScreen({super.key});
@@ -15,12 +23,16 @@ class DeliveryDetailsScreen extends StatefulWidget {
 }
 
 class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
+  // Services to interact with database (Supabase)
   final DeliveryService _deliveryService = DeliveryService();
   final StockService _stockService = StockService();
 
-  DeliveryJob? job;
-  bool isLoading = false;
-  bool proofUploaded = false;
+  DeliveryJob? job;// Stores the current delivery job data
+  bool isLoading = false;// Used to show loading spinner
+  bool proofUploaded = false;// Used to mark if proof image uploaded
+
+  // When screen loads, get the job passed in arguments.
+  // If job exists, fetch full job details (products + items).
 
   @override
   void didChangeDependencies() {
@@ -39,10 +51,12 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     }
   }
 
+  // Fetch full job details from database by jobId
+  // Updates state so UI refresh
+
   Future<void> _fetchJobDetails(String jobId) async {
     setState(() => isLoading = true);
     try {
-      // optional: print inside service if you want raw supabase response
       final fullJob = await _deliveryService.getJobById(jobId);
       debugPrint('DeliveryDetailsScreen: fetched job fullJob?.items.length=${fullJob?.items.length}');
       if (!mounted) return;
@@ -60,6 +74,9 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
       if (mounted) setState(() => isLoading = false);
     }
   }
+
+  // Update delivery job status (e.g., Pending → En Route)
+  // Sends request to Supabase and updates local state
 
   Future<void> _updateJobStatus(String newStatus) async {
     if (job == null) return;
@@ -84,6 +101,9 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
       if (mounted) setState(() => isLoading = false);
     }
   }
+
+  // Assign the current logged-in user as the delivery personnel
+  // Changes status to "picked_up"
 
   Future<void> _assignJobToCurrentUser() async {
     if (job == null) return;
@@ -131,12 +151,20 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     }
   }
 
+  // Upload proof image after delivery
+  // Steps:
+  //   1. User picks image from gallery (can change to camera if needed)
+  //   2. Image uploaded to Supabase storage
+  //   3. Status changed to "delivered"
+  //   4. Deduct stock for each delivered product
+  //   5. Update job state with proof image + delivered time
+
   Future<void> _uploadProofImage() async {
     if (job == null) return;
 
     final picker = ImagePicker();
 
-    // 🔥 Use gallery (you can change back to camera if you want)
+    //Use gallery (you can change back to camera if you want)
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile == null) {
@@ -151,14 +179,14 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     try {
       File file = File(pickedFile.path);
 
-      // ✅ Upload proof image
+      //Upload proof image
       String? imageUrl = await _deliveryService.uploadProofImage(job!.id, file);
 
       if (imageUrl != null) {
-        // ✅ Update status to delivered
+        //Update status to delivered
         bool success = await _deliveryService.updateJobStatus(job!.id, 'delivered');
         if (success) {
-          // ✅ Deduct stock for each delivered item
+          //Deduct stock for each delivered item
           bool allOk = true;
 
           for (final item in job!.items) {
@@ -191,7 +219,6 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
             }
           }
 
-          // ✅ Update UI state
           if (mounted) {
             setState(() {
               job = job!.copyWith(
@@ -225,6 +252,9 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
       if (mounted) setState(() => isLoading = false);
     }
   }
+
+  // View proof image uploaded earlier
+  // Opens a dialog showing the delivery proof image
 
   Future<void> _viewProofImage() async {
     if (job?.proofImageUrl == null) {
@@ -283,6 +313,9 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
       },
     );
   }
+
+  // Notify customer (no function just show)
+  // Shows success dialog when done
 
   Future<void> _notifyCustomer() async {
     if (job == null) return;
@@ -383,7 +416,9 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     }
   }
 
-  // ✅ NEW METHOD: Navigate to product details (fetch from Supabase)
+  // Navigate to Product Details screen
+  // Fetch product from Supabase by ID, then push to product details route
+
   Future<void> _navigateToProductDetails(String productId) async {
     // Show loading indicator
     showDialog(
@@ -399,15 +434,12 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
       final fullProduct = await _stockService.getProductById(productId);
 
       if (!mounted) return;
-
-      // Close loading dialog
       Navigator.pop(context);
 
       if (fullProduct != null) {
-        // Use the existing route defined in main.dart
         Navigator.pushNamed(
           context,
-          '/product-detail', // This matches your main.dart route
+          '/product-detail',
           arguments: fullProduct,
         );
       } else {
@@ -417,8 +449,6 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
       }
     } catch (error) {
       if (!mounted) return;
-
-      // Close loading dialog
       Navigator.pop(context);
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -427,6 +457,7 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     }
   }
 
+  // Build customer info card (name, contact, address, status, etc.)
   Widget _buildCustomerInfo() {
     if (job == null) return const SizedBox.shrink();
 
@@ -462,6 +493,9 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     );
   }
 
+  // Build list of ordered products
+  // Each product shows image, name, quantity
+  // Has view details button → goes to product details screen
   Widget _buildProductsList() {
     if (job == null) return const SizedBox.shrink();
 
@@ -513,7 +547,8 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     );
   }
 
-  // Use VoidCallback for simplicity
+  // Helper method to build main action button
+  // Used for Pick Up / En Route / Mark as Done etc.
   Widget _buildMainButton(String text, VoidCallback onPressed, {Color color = const Color(0xFF2E7D32)}) {
     return SizedBox(
       width: double.infinity,
@@ -526,6 +561,11 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     );
   }
 
+  // Build action buttons based on delivery status
+  // - Pending: Pick Up
+  // - Picked Up: En Route
+  // - En Route: Mark as Done (upload proof)
+  // - Delivered: Notify customer / View Proof
   Widget _buildActionButtons() {
     if (job == null) return const SizedBox.shrink();
 
@@ -573,6 +613,8 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     }
   }
 
+  // Decide color based on job status
+  // Helps show status more clearly (orange, blue, purple, green)
   Color _getStatusColor() {
     switch (job?.status.toLowerCase()) {
       case 'pending':
@@ -588,14 +630,20 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
     }
   }
 
-  // ========== build ==========
+  // Main build method
+  // Builds the full screen:
+  //   - AppBar
+  //   - Customer Info card
+  //   - Product List
+  //   - Action Buttons depending on status
+  // Uses PopScope to return updated job back to previous screen
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false, // block default back navigation
+      canPop: false, // prevent user from just swiping back
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
-          Navigator.pop(context, job); // ✅ send updated job back to homepage
+          Navigator.pop(context, job); //send updated job back to homepage
         }
       },
       child: Scaffold(
@@ -610,11 +658,11 @@ class _DeliveryDetailsScreenState extends State<DeliveryDetailsScreen> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              _buildCustomerInfo(),
+              _buildCustomerInfo(),// customer details card
               const SizedBox(height: 12),
-              _buildProductsList(),
+              _buildProductsList(),// list of items in the order
               const SizedBox(height: 24),
-              _buildActionButtons(),
+              _buildActionButtons(),// buttons depend on status
               const SizedBox(height: 16),
             ],
           ),
